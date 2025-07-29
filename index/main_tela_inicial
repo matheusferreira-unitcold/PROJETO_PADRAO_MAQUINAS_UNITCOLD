@@ -1,0 +1,160 @@
+import tkinter as tk
+from tkinter import ttk, messagebox
+
+class CadastroProdutosApp:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Cadastro de Composição de Produtos")
+        self.root.geometry("600x400")
+        
+        self.create_widgets()
+    
+    def create_widgets(self):
+        # Frame principal
+        main_frame = tk.Frame(self.root, padx=20, pady=20)
+        main_frame.pack(expand=True, fill=tk.BOTH)
+        
+        # Título
+        tk.Label(main_frame, text="Cadastro de Composição de Produtos", 
+                font=("Arial", 14, "bold")).grid(row=0, column=0, columnspan=2, pady=10)
+        
+        # Seleção do tipo de produto
+        tk.Label(main_frame, text="Selecione o tipo de produto:").grid(row=1, column=0, sticky="w", pady=5)
+        
+        self.tipo_produto = tk.StringVar()
+        tipo_produto_frame = tk.Frame(main_frame)
+        tipo_produto_frame.grid(row=1, column=1, sticky="ew", pady=5)
+        
+        # Opções de produtos
+        opcoes_produtos = {
+            "Fancoletes": ["CR-FTC", "CR-FTH", "CR-FTK", "CF-FCT"],
+            "Air Handler": ["CR-AHU", "CF-AHU", "CC-AHU"],
+            "Unidade de tratamento de ar": ["CR-UTA"],
+            "Unidade de tratamento de ar vertical": ["CR-UTV"]
+        }
+        
+        # Combobox para seleção do tipo principal
+        self.combo_tipo_principal = ttk.Combobox(tipo_produto_frame, 
+                                              values=list(opcoes_produtos.keys()),
+                                              state="readonly")
+        self.combo_tipo_principal.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        self.combo_tipo_principal.bind("<<ComboboxSelected>>", self.atualizar_subtipos)
+        
+        # Combobox para seleção do subtipo
+        self.combo_subtipo = ttk.Combobox(tipo_produto_frame, state="readonly")
+        self.combo_subtipo.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(5,0))
+        
+        # Dados do produto
+        tk.Label(main_frame, text="Descrição do produto:").grid(row=2, column=0, sticky="w", pady=5)
+        self.entry_descricao = tk.Entry(main_frame)
+        self.entry_descricao.grid(row=2, column=1, sticky="ew", pady=5)
+        
+        tk.Label(main_frame, text="Código do produto:").grid(row=3, column=0, sticky="w", pady=5)
+        self.entry_codigo = tk.Entry(main_frame)
+        self.entry_codigo.grid(row=3, column=1, sticky="ew", pady=5)
+        
+        # Componentes
+        tk.Label(main_frame, text="Componentes:").grid(row=4, column=0, sticky="nw", pady=5)
+        
+        self.componentes_frame = tk.Frame(main_frame)
+        self.componentes_frame.grid(row=4, column=1, sticky="nsew", pady=5)
+        
+        # Lista de componentes
+        self.lista_componentes = tk.Listbox(self.componentes_frame, height=5)
+        self.lista_componentes.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        
+        # Scrollbar
+        scrollbar = tk.Scrollbar(self.componentes_frame, orient="vertical")
+        scrollbar.config(command=self.lista_componentes.yview)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        self.lista_componentes.config(yscrollcommand=scrollbar.set)
+        
+        # Frame para botões de componentes
+        botoes_componentes_frame = tk.Frame(main_frame)
+        botoes_componentes_frame.grid(row=5, column=1, sticky="ew", pady=5)
+        
+        tk.Button(botoes_componentes_frame, text="Adicionar Componente", 
+                 command=self.adicionar_componente).pack(side=tk.LEFT, padx=2)
+        tk.Button(botoes_componentes_frame, text="Remover Componente", 
+                 command=self.remover_componente).pack(side=tk.LEFT, padx=2)
+        
+        # Botões de ação
+        botoes_frame = tk.Frame(main_frame)
+        botoes_frame.grid(row=6, column=0, columnspan=2, pady=20)
+        
+        tk.Button(botoes_frame, text="Salvar", command=self.salvar_cadastro, 
+                width=15).pack(side=tk.LEFT, padx=10)
+        tk.Button(botoes_frame, text="Limpar", command=self.limpar_campos, 
+                width=15).pack(side=tk.LEFT, padx=10)
+        tk.Button(botoes_frame, text="Sair", command=self.root.quit, 
+                width=15).pack(side=tk.LEFT, padx=10)
+        
+        # Configurar pesos das linhas/colunas
+        main_frame.columnconfigure(1, weight=1)
+        main_frame.rowconfigure(4, weight=1)
+    
+    def atualizar_subtipos(self, event):
+        opcoes_produtos = {
+            "Fancoletes": ["CR-FTC", "CR-FTH", "CR-FTK", "CF-FCT"],
+            "Air Handler": ["CR-AHU", "CF-AHU", "CC-AHU"],
+            "Unidade de tratamento de ar": ["CR-UTA"],
+            "Unidade de tratamento de ar vertical": ["CR-UTV"]
+        }
+        
+        tipo_selecionado = self.combo_tipo_principal.get()
+        if tipo_selecionado in opcoes_produtos:
+            self.combo_subtipo["values"] = opcoes_produtos[tipo_selecionado]
+            self.combo_subtipo.set("")  # Limpa seleção anterior
+    
+    def adicionar_componente(self):
+        componente = tk.simpledialog.askstring("Adicionar Componente", "Digite o nome do componente:")
+        if componente:
+            self.lista_componentes.insert(tk.END, componente)
+    
+    def remover_componente(self):
+        try:
+            selecao = self.lista_componentes.curselection()
+            if selecao:
+                self.lista_componentes.delete(selecao[0])
+        except:
+            pass
+    
+    def salvar_cadastro(self):
+        tipo_principal = self.combo_tipo_principal.get()
+        subtipo = self.combo_subtipo.get()
+        descricao = self.entry_descricao.get()
+        codigo = self.entry_codigo.get()
+        componentes = list(self.lista_componentes.get(0, tk.END))
+        
+        if not tipo_principal or not subtipo or not descricao or not codigo or not componentes:
+            messagebox.showwarning("Campos obrigatórios", "Preencha todos os campos obrigatórios!")
+            return
+        
+        # Aqui você pode adicionar a lógica para salvar os dados
+        # Por exemplo, em um banco de dados ou arquivo
+        
+        dados = {
+            "Tipo Principal": tipo_principal,
+            "Subtipo": subtipo,
+            "Descrição": descricao,
+            "Código": codigo,
+            "Componentes": componentes
+        }
+        
+        # Exemplo: mostrar os dados que seriam salvos
+        messagebox.showinfo("Cadastro Salvo", f"Produto cadastrado com sucesso!\n\n{str(dados)}")
+        
+        # Limpar campos após salvar
+        self.limpar_campos()
+    
+    def limpar_campos(self):
+        self.combo_tipo_principal.set("")
+        self.combo_subtipo.set("")
+        self.entry_descricao.delete(0, tk.END)
+        self.entry_codigo.delete(0, tk.END)
+        self.lista_componentes.delete(0, tk.END)
+
+if __name__ == "__main__":
+    root = tk.Tk()
+    app = CadastroProdutosApp(root)
+    root.mainloop()
