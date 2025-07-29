@@ -1,59 +1,92 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
+import pandas as pd
+import os
 
 class FancoleteConfigurador:
     def __init__(self, root):
         self.root = root
         self.root.title("Configurador de Fancoletes")
-        self.root.geometry("800x1000")  # Aumentei a altura para acomodar o layout vertical
+        self.root.geometry("800x1000")
+        
+        # Caminho da planilha
+        self.planilha_path = r"C:\Users\unitc\Unitcold\TI Unitcold - Documentos\PROJETO_PADRAO_MAQUINAS_UNITCOLD\Estrutura_de_equipamentos.xlsx"
+        
+        # Verificar se a planilha existe
+        if not os.path.exists(self.planilha_path):
+            messagebox.showerror("Erro", f"Planilha não encontrada em:\n{self.planilha_path}")
+            self.root.destroy()
+            return
+        
+        # Carregar dados da planilha
+        try:
+            self.df = pd.read_excel(self.planilha_path, sheet_name='fancoletes', header=None)
+            self.dados_planilha = self.processar_planilha()
+            
+            # Verifica se encontrou dados para todos os níveis
+            niveis_necessarios = ["(02)", "(04)", "(05)", "(06)", "(08)"]
+            for nivel in niveis_necessarios:
+                if nivel not in self.dados_planilha or not self.dados_planilha[nivel]:
+                    messagebox.showerror("Erro", f"Não foram encontrados dados para o nível {nivel} na planilha")
+                    self.root.destroy()
+                    return
+                
+        except Exception as e:
+            messagebox.showerror("Erro", f"Erro ao ler planilha:\n{str(e)}")
+            self.root.destroy()
+            return
         
         # Dados hierárquicos
-        self.familias = [
-            "CR-FTC", "CR-FTH", "CR-FTK", "CF-FCT"
-        ]
+        self.familias = ["CR-FTC", "CR-FTH", "CR-FTK", "CF-FCT"]
         
         self.estrutura = {
-            "(02) Modelo (Cap. em TR)": [
-                ("", "Vazio"),
-                ("007", "0.75 TR"),
-                ("010", "1.00 TR"),
-                ("015", "1.50 TR"),
-                ("020", "2.00 TR"),
-                ("025", "2.50 TR"),
-                ("030", "3.00 TR")
-            ],
+            "(02) Modelo (Cap. em TR)": self.dados_planilha.get("(02)", [("", "Vazio")]),
             "(03) Config Trocador": "EDITAVEL",
-            "(04) Parceiro VRF": [
-                ("", "Vazio"),
-                ("SS", "Samsung"),
-                ("TN", "Trane"),
-                ("DK", "Daikin"),
-                ("LG", "LG")
-            ],
-            "(05) Tipo ventilador": [
-                ("", "Vazio"),
-                ("EC", "Radial plenum fan EC"),
-                ("AC", "Sirocco motor AC")
-            ],
-            "(06) Filtragem": [
-                ("", "Vazio"),
-                ("G4/M5", "Filtragem antes ventilador"),
-                ("G4+F9", "Filtragem grossa + fina"),
-                ("G4+F9+H14", "Filtragem completa")
-            ],
-            "(08) Finalização": [
-                ("", "Vazio"),
-                ("X", "Equipamento padrão"),
-                ("E", "Equipamento especial")
-            ]
+            "(04) Parceiro VRF": self.dados_planilha.get("(04)", [("", "Vazio")]),
+            "(05) Tipo ventilador": self.dados_planilha.get("(05)", [("", "Vazio")]),
+            "(06) Filtragem": self.dados_planilha.get("(06)", [("", "Vazio")]),
+            "(08) Finalização": self.dados_planilha.get("(08)", [("", "Vazio")])
         }
+        
+        # Garante que a opção "Vazio" está presente em todos os níveis
+        for nivel in self.estrutura:
+            if nivel != "(03) Config Trocador" and ("", "Vazio") not in self.estrutura[nivel]:
+                self.estrutura[nivel].insert(0, ("", "Vazio"))
         
         self.selecoes = {nivel: None for nivel in self.estrutura}
         self.familia_selecionada = tk.StringVar()
         self.codigo_exemplo = tk.StringVar()
         self.create_widgets()
-    
+
+    def processar_planilha(self):
+        """Processa a planilha para extrair os dados de todos os níveis"""
+        dados = {}
+        try:
+            for _, row in self.df.iterrows():
+                nivel = str(row[1]).strip() if pd.notna(row[1]) else None
+                codigo = str(row[0]).strip() if pd.notna(row[0]) else None
+                descricao = str(row[4]).strip() if len(row) > 4 and pd.notna(row[4]) else ""
+                
+                # Mapeia os números dos níveis para seus identificadores
+                nivel_map = {
+                    "2": "(02)",
+                    "4": "(04)",
+                    "5": "(05)",
+                    "6": "(06)",
+                    "8": "(08)"
+                }
+                
+                if nivel in nivel_map and codigo:
+                    nivel_id = nivel_map[nivel]
+                    dados.setdefault(nivel_id, []).append((codigo, descricao))
+        except Exception as e:
+            messagebox.showerror("Erro", f"Erro ao processar planilha:\n{str(e)}")
+            return {}
+        
+        return dados
+
     def create_widgets(self):
+        """Cria todos os elementos da interface gráfica"""
         # Frame principal com scrollbar
         main_frame = tk.Frame(self.root)
         main_frame.pack(fill=tk.BOTH, expand=True)
@@ -64,9 +97,7 @@ class FancoleteConfigurador:
         
         scrollable_frame.bind(
             "<Configure>",
-            lambda e: canvas.configure(
-                scrollregion=canvas.bbox("all")
-            )
+            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
         )
         
         canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
@@ -79,8 +110,7 @@ class FancoleteConfigurador:
         familia_frame = tk.Frame(scrollable_frame, padx=10, pady=10)
         familia_frame.pack(fill=tk.X)
         
-        tk.Label(familia_frame, text="Família do Fancolete:", 
-                font=("Arial", 11)).pack(side=tk.LEFT, padx=5)
+        tk.Label(familia_frame, text="Família do Fancolete:", font=("Arial", 11)).pack(side=tk.LEFT, padx=5)
         
         familia_combo = ttk.Combobox(
             familia_frame,
@@ -107,15 +137,13 @@ class FancoleteConfigurador:
         self.exemplo_label.pack(side=tk.LEFT, padx=10)
         self.atualizar_exemplo()
         
-        # Colunas para cada nível (agora verticalmente)
+        # Colunas para cada nível
         for nivel, opcoes in self.estrutura.items():
             nivel_frame = tk.Frame(scrollable_frame, bd=2, relief=tk.GROOVE, padx=10, pady=10)
             nivel_frame.pack(fill=tk.X, padx=10, pady=5)
             
-            # Título
             tk.Label(nivel_frame, text=nivel, font=("Arial", 11, "bold")).pack(anchor="w", pady=5)
             
-            # Configuração especial para o nível do trocador
             if nivel == "(03) Config Trocador":
                 self.create_trocador_widgets(nivel_frame, nivel)
             else:
@@ -144,8 +172,7 @@ class FancoleteConfigurador:
         ).pack(side=tk.LEFT, padx=10)
         
         # Área do código gerado
-        tk.Label(scrollable_frame, text="Código gerado:", font=("Arial", 11)).pack(
-            anchor="w", padx=10, pady=5)
+        tk.Label(scrollable_frame, text="Código gerado:", font=("Arial", 11)).pack(anchor="w", padx=10, pady=5)
         
         self.codigo_var = tk.StringVar()
         self.codigo_label = tk.Label(
@@ -159,13 +186,12 @@ class FancoleteConfigurador:
             justify=tk.LEFT
         )
         self.codigo_label.pack(fill=tk.X, padx=10, pady=5)
-    
+
     def create_trocador_widgets(self, parent, nivel):
-        # Frame principal para o trocador
+        """Cria widgets específicos para configuração do trocador de calor"""
         trocador_frame = tk.Frame(parent)
         trocador_frame.pack(fill=tk.X, pady=5)
         
-        # Variável para armazenar a seleção
         self.trocador_var = tk.StringVar()
         self.selecoes[nivel] = self.trocador_var
         
@@ -187,26 +213,18 @@ class FancoleteConfigurador:
             exp_direta_frame,
             text="Trocador expansão direta:",
             variable=self.trocador_var,
-            value="0,7/1",  # Valor padrão
+            value="0,7/1",
             font=("Arial", 9),
             anchor="w"
         ).pack(side=tk.LEFT)
         
-        self.exp_capacidade = tk.Entry(
-            exp_direta_frame,
-            width=4,
-            font=("Arial", 9)
-        )
+        self.exp_capacidade = tk.Entry(exp_direta_frame, width=4, font=("Arial", 9))
         self.exp_capacidade.insert(0, "0,7")
         self.exp_capacidade.pack(side=tk.LEFT, padx=2)
         
         tk.Label(exp_direta_frame, text="/", font=("Arial", 9)).pack(side=tk.LEFT)
         
-        self.exp_circuitos = tk.Entry(
-            exp_direta_frame,
-            width=2,
-            font=("Arial", 9)
-        )
+        self.exp_circuitos = tk.Entry(exp_direta_frame, width=2, font=("Arial", 9))
         self.exp_circuitos.insert(0, "1")
         self.exp_circuitos.pack(side=tk.LEFT)
         
@@ -218,26 +236,21 @@ class FancoleteConfigurador:
             agua_gelada_frame,
             text="Trocador água gelada:",
             variable=self.trocador_var,
-            value="4R",  # Valor padrão
+            value="4R",
             font=("Arial", 9),
             anchor="w"
         ).pack(side=tk.LEFT)
         
-        self.agua_filas = tk.Entry(
-            agua_gelada_frame,
-            width=2,
-            font=("Arial", 9)
-        )
+        self.agua_filas = tk.Entry(agua_gelada_frame, width=2, font=("Arial", 9))
         self.agua_filas.insert(0, "4")
         self.agua_filas.pack(side=tk.LEFT, padx=2)
         
         tk.Label(agua_gelada_frame, text="R", font=("Arial", 9)).pack(side=tk.LEFT)
         
-        # Selecionar "Vazio" por padrão
         self.trocador_var.set("")
-    
+
     def create_standard_widgets(self, parent, nivel, opcoes):
-        # Radiobuttons para seleção única (incluindo vazio)
+        """Cria widgets padrão para os níveis normais"""
         var_nivel = tk.StringVar()
         self.selecoes[nivel] = var_nivel
         
@@ -265,18 +278,19 @@ class FancoleteConfigurador:
             )
             desc_label.pack(side=tk.LEFT, fill=tk.X, expand=True)
         
-        # Selecionar "Vazio" por padrão
         var_nivel.set("")
-    
+
     def atualizar_exemplo(self, event=None):
+        """Atualiza o exemplo de código quando a família é selecionada"""
         familia = self.familia_selecionada.get()
         if familia:
             exemplo = f"{familia}-02-03-04-05-06-08"
             self.codigo_exemplo.set(exemplo)
         else:
             self.codigo_exemplo.set("Selecione uma família")
-    
+
     def limpar_selecoes(self):
+        """Limpa todas as seleções"""
         self.familia_selecionada.set("")
         for nivel in self.selecoes:
             self.selecoes[nivel].set("")
@@ -288,8 +302,9 @@ class FancoleteConfigurador:
         self.agua_filas.insert(0, "4")
         self.codigo_var.set("")
         self.atualizar_exemplo()
-    
+
     def gerar_codigo(self):
+        """Gera o código final com base nas seleções"""
         if not self.familia_selecionada.get():
             messagebox.showwarning("Aviso", "Selecione uma família de fancolete")
             return
@@ -299,7 +314,6 @@ class FancoleteConfigurador:
         for nivel, var in self.selecoes.items():
             selecao = var.get()
             
-            # Tratamento especial para o trocador
             if nivel == "(03) Config Trocador":
                 if selecao == "0,7/1":
                     capacidade = self.exp_capacidade.get().strip()
@@ -315,10 +329,10 @@ class FancoleteConfigurador:
                         return
                     selecao = f"{filas}R"
             
-            if selecao:  # Só adiciona se não for vazio
+            if selecao:
                 partes_codigo.append(selecao)
         
-        if len(partes_codigo) == 1:  # Só tem a família
+        if len(partes_codigo) == 1:
             messagebox.showwarning("Aviso", "Selecione pelo menos uma opção nos níveis")
             return
         
