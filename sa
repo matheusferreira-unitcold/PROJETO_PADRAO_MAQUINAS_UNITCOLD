@@ -1,0 +1,58 @@
+    def create_editable_widgets(self, parent, nivel, opcoes):
+        var_nivel = tk.StringVar()
+        self.selecoes[nivel] = var_nivel
+        
+        # Verificar padrões especiais
+        for codigo, descricao in opcoes:
+            if codigo.lower() == "x/x":
+                frame = tk.Frame(parent)
+                frame.pack(anchor="w", pady=2)
+                
+                rb = tk.Radiobutton(
+                    frame,
+                    text="",
+                    variable=var_nivel,
+                    value="x/x",
+                    font=("Arial", 9),
+                    anchor="w"
+                )
+                rb.pack(side=tk.LEFT)
+                
+                # Campos editáveis vazios
+                capacidade = tk.Entry(frame, width=4, font=("Arial", 9))
+                capacidade.pack(side=tk.LEFT, padx=2)
+                
+                tk.Label(frame, text="/", font=("Arial", 9)).pack(side=tk.LEFT)
+                
+                circuitos = tk.Entry(frame, width=2, font=("Arial", 9))
+                circuitos.pack(side=tk.LEFT)
+                
+                self.campos_editaveis[f"{nivel}_capacidade"] = capacidade
+                self.campos_editaveis[f"{nivel}_circuitos"] = circuitos
+                
+                tk.Label(frame, text=descricao, font=("Arial", 9)).pack(side=tk.LEFT, padx=5)
+                
+            elif codigo.lower() == "xr":
+                frame = tk.Frame(parent)
+                frame.pack(anchor="w", pady=2)
+                
+                rb = tk.Radiobutton(
+                    frame,
+                    text="",
+                    variable=var_nivel,
+                    value="xR",
+                    font=("Arial", 9),
+                    anchor="w"
+                )
+                rb.pack(side=tk.LEFT)
+                
+                filas = tk.Entry(frame, width=2, font=("Arial", 9))
+                filas.pack(side=tk.LEFT, padx=2)
+                
+                tk.Label(frame, text="R", font=("Arial", 9)).pack(side=tk.LEFT)
+                
+                self.campos_editaveis[f"{nivel}_filas"] = filas
+                
+                tk.Label(frame, text=descricao, font=("Arial", 9)).pack(side=tk.LEFT, padx=5)
+        
+        var_nivel.set("")
